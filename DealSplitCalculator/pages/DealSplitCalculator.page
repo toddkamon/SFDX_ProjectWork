@@ -1,0 +1,49 @@
+<apex:page >
+<apex:includeLightning />
+<apex:includeScript value="/lightning/lightning.out.js" />
+<script type="text/javascript" src="{!$Resource.SBQQ__easyXDM}"></script>
+
+<div id="LightningComponentId" >
+    <span class="slds-assistive-text">Loading...</span>
+</div>
+
+<script>
+  let rpc = new easyXDM.Rpc({}, {
+            remote: {
+                postMessage: {}
+            },
+            local: {
+                postMessage: function(message) { 
+                    console.log('&&&& postMessage'+message);
+                    $Lightning.use("c:DealSplitCalculatorApp", function() {
+                        $Lightning.createComponent("c:DealSplitCalculator",
+                          { 
+                            recordId : "{!$CurrentPage.parameters.id}",
+                            configData: message
+                          },
+                          "LightningComponentId",
+                          function(cmp) {
+                            console.log('Display Lightning component in visualforce page');
+                            $A.eventService.addHandler({"event": "c:DealSplitCalculatorEvent", "handler": navigate});
+                          });
+                    });
+                }
+            }
+        });
+
+        let navigate = function(event){
+            let cpqconfig = JSON.parse( event.getParam("data"));
+            let action = event.getParam("action");
+            cpqconfig.redirect = {
+                    auto: false,
+                    save: false
+            }
+            cpqconfig.actions = [action];//reload, none, quicksave, save (Only reload, none work for products. All work for Quote)
+            console.log(cpqconfig);
+            rpc.postMessage( JSON.stringify(cpqconfig));
+        }
+
+
+
+</script>
+</apex:page>
