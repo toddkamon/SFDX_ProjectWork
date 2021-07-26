@@ -1,0 +1,258 @@
+<aura:component implements="force:hasRecordId,flexipage:availableForAllPageTypes"
+                access="global"
+                controller="DealSplitCalculatorController"
+                description="Component to calculate and optimize Deal Splits for the quote">
+
+    <aura:attribute name="configData" 
+                    type="String" 
+                    access="public"/>
+
+    <aura:attribute name="data"
+                type="object"
+                access="private"
+                description="Holds the get object" />
+    <aura:attribute name="quote"
+                    type="SBQQ__Quote__c"
+                    access="private"
+                    description="Holds the Quote Record" />
+
+    <aura:attribute name="mapListQuoteLinesByProductCode"
+                    type="Map"
+                    access="private"
+                    description="Holds the list of quote lines to this quote" />
+
+
+    <aura:attribute name="listQuoteLines"
+                    type="List"
+                    access="private" />
+
+    <aura:attribute name="errors" type="Object" default="[]"/>
+    <aura:attribute name="draftValues" type="Object" default="[]"/>
+    <lightning:spinner alternativeText="Loading" size="medium" aura:id="mySpinner" />
+
+
+    <lightning:navigation aura:id="navService"/>
+    <aura:registerEvent name="DealSplitCalculatorEvent" type="c:DealSplitCalculatorEvent" />
+
+    <aura:handler name="init" value="{!this}" action="{!c.onInit}" />
+
+    <lightning:card>
+        <aura:set attribute="title">
+            <lightning:icon class="" variant="default" iconName="standard:partner_fund_allocation" size="medium" alternative-text="Deal Split Calculator"/>
+            Deal Split Calculator
+        </aura:set>
+        <div class="slds-grid slds-wrap slds-gutters">
+            <div class="slds-col slds-size_1-of-2">
+                <div class="slds-grid slds-wrap">
+                    <div class="slds-col slds-size_1-of-1">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label" for="text-input-id-1">
+                                Country
+                            </label>
+                            <div class="slds-form-element__control">
+                                <lightning:formattedText value="{!v.data.quote.SBQQ__ShippingCountry__c}" />
+                            </div>
+                          </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label" for="text-input-id-1">
+                                Annual Purchase Agreement
+                            </label>
+                            <div class="slds-form-element__control">
+                                <lightning:formattedNumber  value="{!v.data.quote.Annual_Purchase_Agreement__c}" 
+                                                            style="currency" 
+                                                            currencyCode="{!v.data.quote.CurrencyIsoCode}" 
+                                                            currencyDisplayAs="symbol" />
+                            </div>
+                          </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label" for="text-input-id-1">
+                                Final Purchase Agreement
+                            </label>
+                            <div class="slds-form-element__control">
+                                <lightning:formattedNumber  value="{!v.data.quote.Final_Purchase_Agreement__c}"
+                                                            style="currency" 
+                                                            currencyCode="{!v.data.quote.CurrencyIsoCode}" 
+                                                            currencyDisplayAs="symbol" />
+                            </div>
+                          </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label" for="text-input-id-1">
+                                Volume Growth
+                            </label>
+                            <div class="slds-form-element__control">
+                                <lightning:formattedText value="{!v.data.quote.Volume_Growth__c}" />
+                            </div>
+                          </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label" for="text-input-id-1">
+                                Subscription Terms (Month)
+                            </label>
+                            <div class="slds-form-element__control">
+                                <lightning:formattedNumber value="{!v.data.quote.SBQQ__SubscriptionTerm__c}" style="decimal" minimumFractionDigits="1"/>
+                            </div>
+                          </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <Lightning:select value="{!v.data.timeValueMoney}" label="Time Value Money (Non-FM Jobber)" onchange="{!c.onChangeTimeValueMoney}">
+                            <Option value="On">On</Option>
+                            <Option value="Off">Off</Option>
+                        </Lightning:select>
+                    </div>
+
+
+                </div>
+            </div>
+            <div class="slds-col slds-size_1-of-2">
+                <div class="slds-grid slds-wrap">
+
+                    <div class="slds-col slds-size_1-of-1">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label" for="text-input-id-1">
+                                Total Effective Discount
+                            </label>
+                            <div class="slds-form-element__control">
+                                <lightning:formattedNumber value="{!v.data.quote.TED__c / 100}" style="percent" maximumFractionDigits="2" />
+                            </div>
+                          </div>
+                    </div>
+                    
+                    <div class="slds-col slds-size_1-of-1">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label" for="text-input-id-1">
+                                Axalta Split
+                            </label>
+                            <div class="slds-form-element__control">
+                                <lightning:formattedNumber value="{!v.data.quote.Axalta_Split__c / 100}" style="percent" maximumFractionDigits="2"/>
+                            </div>
+                          </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1">
+                        <div class="slds-form-element">
+                            <label class="slds-form-element__label" for="text-input-id-1">
+                                Distributor Split
+                            </label>
+                            <div class="slds-form-element__control">
+                                <lightning:formattedNumber value="{!v.data.quote.Distributor_Split__c / 100}" style="percent" maximumFractionDigits="2" />
+                            </div>
+                          </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </lightning:card>
+
+    <lightning:card>
+        <aura:set attribute="footer">
+            <lightning:button variant="brand-outline" label="Cancel" title="Cancel" onclick="{!c.onClickCancel}" />
+            <lightning:button variant="Neutral" label="Reset" title="Reset" onclick="{!c.onClickReset}" />
+            <lightning:button variant="brand" label="Optimize" title="Optimize" onclick="{!c.onClickOptimize}" />
+            <lightning:button variant="brand" label="Save" title="Save" onclick="{!c.onClickSave}" />
+        </aura:set>
+    
+        <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+            <thead>
+                <tr class="slds-line-height_reset">
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Product">Product</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Incentive Value">Incentive Value</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Axalta Value">Axalta Value</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Axalta Split">Axalta Split</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Distributor Value">Distributor Value</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Distributor Split">Distributor Split</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Total Effective Discount %">Total Effective Discount %</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Axalta Effective Discount %">Axalta Effective Discount %</div>
+                    </th>
+                    <th class="" scope="col">
+                        <div class="slds-truncate" title="Distributor Effective Discount %">Distributor Effective Discount %</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:iteration items="{!v.listQuoteLines}" var="quoteLine">
+                    <tr class="slds-hint-parent">
+                        <th data-label="Product" scope="row">
+                          <div class="slds-truncate" title="{!quoteLine.productName}">
+                            <a href="javascript:void(0);" tabindex="-1">{!quoteLine.ProductName}</a>
+                          </div>
+                        </th>
+                        <td data-label="Incentive Value">
+                            <div class="slds-truncate" title="Incentive Value">
+                                <lightning:formattedNumber  value="{!quoteLine.Incentive_Value__c}" 
+                                                            style="currency" 
+                                                            currencyCode="{!v.data.quote.CurrencyIsoCode}" 
+                                                            currencyDisplayAs="symbol" />
+                            </div>
+                        </td>
+                        <td data-label="Axalta Value">
+                            <div class="slds-truncate" title="Axalta Value">
+                                <lightning:input    value="{!quoteLine.Axalta_Value__c}" 
+                                                    name="Axalta Value"
+                                                    formatter="currency"
+                                                    step=".01" />
+                            </div>
+                        </td>
+                        <td data-label="Axalta Split">
+                            <lightning:formattedNumber value="{!quoteLine.Axalta_Split__c / 100}" style="percent" maximumFractionDigits="2" />
+                        </td>
+                        <td data-label="Distributor Value">
+                            <div class="slds-truncate" title="Distributor Value">
+                                <lightning:formattedNumber  value="{!quoteLine.Distributor_Value__c}" 
+                                                            style="currency" 
+                                                            currencyCode="{!v.data.quote.CurrencyIsoCode}" 
+                                                            currencyDisplayAs="symbol" />
+                            </div>
+                        </td>
+                        <td data-label="Distributor Split">
+                            <div class="slds-truncate" title="Distributor Split">
+                                <lightning:formattedNumber value="{!quoteLine.Distributor_Split__c / 100}" style="percent" maximumFractionDigits="2" />
+                            </div>
+                        </td>
+                        <td data-label="Total Effective Discount %">
+                            <div class="slds-truncate" title="Total Effective Discount %">
+                                <lightning:formattedNumber value="{!quoteLine.Incentive_Value__c / v.data.quote.Final_Purchase_Agreement__c}" style="percent" maximumFractionDigits="2" />
+                            </div>
+                        </td>
+                        <td data-label="Axalta Effective Discount %">
+                            <div class="slds-truncate" title="Axalta Effective Discount %">
+                                <lightning:formattedNumber value="{!quoteLine.Axalta_Value__c / v.data.quote.Final_Purchase_Agreement__c}" style="percent" maximumFractionDigits="2" />
+                            </div>
+                        </td>  
+                        <td data-label="Distributor Effective Discount %">
+                            <div class="slds-truncate" title="Distributor Effective Discount %">
+                                <lightning:formattedNumber value="{!quoteLine.Distributor_Value__c / v.data.quote.Final_Purchase_Agreement__c}" style="percent" maximumFractionDigits="2" />
+                            </div>
+                        </td>
+                    </tr>
+
+                </aura:iteration>
+            </tbody>
+        </table>
+    </lightning:card>
+      
+
+    
+</aura:component>

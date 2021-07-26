@@ -1,0 +1,14 @@
+<aura:event
+	type="APPLICATION"
+	description="Event template">
+	<aura:attribute
+		name="data"
+		type="string"
+		description="Data used by easy XDM"
+		access="global"/>
+	<aura:attribute
+		name="action"
+		type="string"
+		description="Action to reload or close the modal"
+		access="global"/>
+</aura:event>
